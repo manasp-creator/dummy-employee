@@ -1,0 +1,6 @@
+code,email,first_name,last_name,id,last_login,status
+EMP001,alice@company.com,Alice,Sharma,U001,2024-05-10 10:00,Active
+EMP002,bob@company.com,Bob,Verma,U002,2024-05-11 09:00,Active
+EMP003,charlie@company.com,Charlie,Singh,U003,2024-05-09 15:30,Inactive
+EMP004,diana@company.com,Diana,Kapoor,U004,2024-05-12 11:45,Active
+EMP005,eve@company.com,Eve,Mehta,U005,2024-05-08 16:20,Active
