@@ -1,23 +1,53 @@
-from fastapi import FastAPI, HTTPException, Depends
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-import pandas as pd
+from sqlalchemy import create_engine, Column, String
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
 import os
 
 app = FastAPI()
 
-CSV_FILE = "employees.csv"
+# ==========================
+# DATABASE CONFIG
+# ==========================
 
-# -----------------------
-# Dummy Company Credentials
-# -----------------------
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+engine = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(bind=engine)
+Base = declarative_base()
+
+
+# ==========================
+# TABLE MODEL
+# ==========================
+
+class Employee(Base):
+    __tablename__ = "employees"
+
+    id = Column(String, primary_key=True, index=True)
+    code = Column(String)
+    email = Column(String)
+    first_name = Column(String)
+    last_name = Column(String)
+    status = Column(String)
+    last_login = Column(String)
+
+
+Base.metadata.create_all(bind=engine)
+
+
+# ==========================
+# DUMMY COMPANY CREDENTIALS
+# ==========================
+
 COMPANY_USERNAME = "admin"
 COMPANY_PASSWORD = "company123"
 
 
-# -----------------------
-# Models
-# -----------------------
+# ==========================
+# REQUEST MODEL
+# ==========================
 
 class DeleteRequest(BaseModel):
     employee_id: str
@@ -25,59 +55,77 @@ class DeleteRequest(BaseModel):
     company_password: str
 
 
-# -----------------------
-# Helper Functions
-# -----------------------
-
-def load_employees():
-    if not os.path.exists(CSV_FILE):
-        return pd.DataFrame()
-    return pd.read_csv(CSV_FILE)
-
-
-def save_employees(df):
-    df.to_csv(CSV_FILE, index=False)
-
-
-# -----------------------
-# API Endpoints
-# -----------------------
+# ==========================
+# ROOT
+# ==========================
 
 @app.get("/")
 def root():
-    return {"message": "Employee Management API Running"}
+    return {"message": "PostgreSQL Employee API Running"}
 
 
-# Fetch employee list (for Power App on login)
+# ==========================
+# GET EMPLOYEES
+# ==========================
+
 @app.get("/employees")
 def get_employees():
-    df = load_employees()
-    return df.to_dict(orient="records")
+    db = SessionLocal()
+    employees = db.query(Employee).all()
+    db.close()
+
+    return [
+        {
+            "id": e.id,
+            "code": e.code,
+            "email": e.email,
+            "first_name": e.first_name,
+            "last_name": e.last_name,
+            "status": e.status,
+            "last_login": e.last_login,
+        }
+        for e in employees
+    ]
 
 
-# Delete employee with credential check
+# ==========================
+# DELETE EMPLOYEE
+# ==========================
+
 @app.post("/delete-employee")
 def delete_employee(request: DeleteRequest):
 
-    # Step 1: Validate company credentials
     if (
         request.company_username != COMPANY_USERNAME
         or request.company_password != COMPANY_PASSWORD
     ):
         raise HTTPException(status_code=401, detail="Invalid company credentials")
 
-    # Step 2: Load data
-    df = load_employees()
+    db = SessionLocal()
+    employee = db.query(Employee).filter(Employee.id == request.employee_id).first()
 
-    if request.employee_id not in df["id"].values:
+    if not employee:
+        db.close()
         raise HTTPException(status_code=404, detail="Employee not found")
 
-    # Step 3: Delete employee
-    df = df[df["id"] != request.employee_id]
+    db.delete(employee)
+    db.commit()
 
-    save_employees(df)
+    remaining = db.query(Employee).all()
+    db.close()
 
     return {
         "message": "Employee deleted successfully",
-        "remaining_employees": df.to_dict(orient="records")
+        "remaining_employees": [
+            {
+                "id": e.id,
+                "code": e.code,
+                "email": e.email,
+                "first_name": e.first_name,
+                "last_name": e.last_name,
+                "status": e.status,
+                "last_login": e.last_login,
+            }
+            for e in remaining
+        ],
     }
