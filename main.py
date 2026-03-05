@@ -1,7 +1,8 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import create_engine, Column, String
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
 import os
 
 app = FastAPI()
@@ -15,6 +16,7 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(bind=engine)
 Base = declarative_base()
+
 
 # ==========================
 # TABLE MODEL
@@ -31,14 +33,17 @@ class Employee(Base):
     status = Column(String)
     last_login = Column(String)
 
+
 Base.metadata.create_all(bind=engine)
 
+
 # ==========================
-# COMPANY CREDENTIALS
+# DUMMY COMPANY CREDENTIALS
 # ==========================
 
 COMPANY_USERNAME = "admin"
 COMPANY_PASSWORD = "company123"
+
 
 # ==========================
 # REQUEST MODEL
@@ -49,6 +54,7 @@ class DeleteRequest(BaseModel):
     company_username: str
     company_password: str
 
+
 # ==========================
 # ROOT
 # ==========================
@@ -57,6 +63,7 @@ class DeleteRequest(BaseModel):
 def root():
     return {"message": "PostgreSQL Employee API Running"}
 
+
 # ==========================
 # GET EMPLOYEES
 # ==========================
@@ -64,10 +71,10 @@ def root():
 @app.get("/employees")
 def get_employees():
     db = SessionLocal()
-
     employees = db.query(Employee).all()
+    db.close()
 
-    result = [
+    return [
         {
             "id": e.id,
             "code": e.code,
@@ -80,8 +87,6 @@ def get_employees():
         for e in employees
     ]
 
-    db.close()
-    return result
 
 # ==========================
 # DELETE EMPLOYEE
@@ -90,15 +95,10 @@ def get_employees():
 @app.post("/delete-employee")
 def delete_employee(request: DeleteRequest):
 
-    # check company credentials
-    if (
-        request.company_username != COMPANY_USERNAME
-        or request.company_password != COMPANY_PASSWORD
-    ):
+    if username != "admin" or password != "admin123":
         raise HTTPException(status_code=401, detail="Invalid company credentials")
 
     db = SessionLocal()
-
     employee = db.query(Employee).filter(Employee.id == request.employee_id).first()
 
     if not employee:
@@ -109,23 +109,20 @@ def delete_employee(request: DeleteRequest):
     db.commit()
 
     remaining = db.query(Employee).all()
-
-    result = [
-        {
-            "id": e.id,
-            "code": e.code,
-            "email": e.email,
-            "first_name": e.first_name,
-            "last_name": e.last_name,
-            "status": e.status,
-            "last_login": e.last_login,
-        }
-        for e in remaining
-    ]
-
     db.close()
 
     return {
         "message": "Employee deleted successfully",
-        "remaining_employees": result
+        "remaining_employees": [
+            {
+                "id": e.id,
+                "code": e.code,
+                "email": e.email,
+                "first_name": e.first_name,
+                "last_name": e.last_name,
+                "status": e.status,
+                "last_login": e.last_login,
+            }
+            for e in remaining
+        ],
     }
