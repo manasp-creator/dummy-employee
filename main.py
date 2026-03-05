@@ -1,14 +1,13 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import create_engine, Column, String
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, declarative_base
 import os
 
 app = FastAPI()
 
 # ==========================
-# DATABASE CONFIG
+# DATABASE
 # ==========================
 
 DATABASE_URL = os.getenv("DATABASE_URL")
@@ -19,7 +18,7 @@ Base = declarative_base()
 
 
 # ==========================
-# TABLE MODEL
+# TABLE
 # ==========================
 
 class Employee(Base):
@@ -38,7 +37,7 @@ Base.metadata.create_all(bind=engine)
 
 
 # ==========================
-# COMPANY CREDENTIALS
+# COMPANY AUTH
 # ==========================
 
 COMPANY_USERNAME = "admin"
@@ -61,7 +60,7 @@ class DisableRequest(BaseModel):
 
 @app.get("/")
 def root():
-    return {"message": "PostgreSQL Employee API Running"}
+    return {"message": "Employee API Running"}
 
 
 # ==========================
@@ -72,7 +71,9 @@ def root():
 def get_employees():
 
     db = SessionLocal()
+
     employees = db.query(Employee).all()
+
     db.close()
 
     return [
@@ -93,31 +94,41 @@ def get_employees():
 # DISABLE EMPLOYEE
 # ==========================
 
-from fastapi import Body
-
 @app.post("/disable-employee")
-def disable_employee(request: DeleteRequest = Body(...)):
+def disable_employee(request: DisableRequest):
 
+    # validate company credentials
     if (
         request.company_username != COMPANY_USERNAME
         or request.company_password != COMPANY_PASSWORD
     ):
-        raise HTTPException(status_code=401, detail="Invalid company credentials")
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid company credentials"
+        )
 
     db = SessionLocal()
 
-    employee = db.query(Employee).filter(Employee.id == request.employee_id).first()
+    employee = db.query(Employee).filter(
+        Employee.id == request.employee_id
+    ).first()
 
     if not employee:
         db.close()
-        raise HTTPException(status_code=404, detail="Employee not found")
+        raise HTTPException(
+            status_code=404,
+            detail="Employee not found"
+        )
 
+    # update status instead of deleting
     employee.status = "Disabled"
 
     db.commit()
+
     db.close()
 
     return {
         "message": "Employee disabled successfully",
-        "employee_id": request.employee_id
+        "employee_id": request.employee_id,
+        "new_status": "Disabled"
     }
