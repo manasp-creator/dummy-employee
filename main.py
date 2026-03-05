@@ -38,7 +38,7 @@ Base.metadata.create_all(bind=engine)
 
 
 # ==========================
-# DUMMY COMPANY CREDENTIALS
+# COMPANY CREDENTIALS
 # ==========================
 
 COMPANY_USERNAME = "admin"
@@ -49,7 +49,7 @@ COMPANY_PASSWORD = "company123"
 # REQUEST MODEL
 # ==========================
 
-class DeleteRequest(BaseModel):
+class DisableRequest(BaseModel):
     employee_id: str
     company_username: str
     company_password: str
@@ -70,6 +70,7 @@ def root():
 
 @app.get("/employees")
 def get_employees():
+
     db = SessionLocal()
     employees = db.query(Employee).all()
     db.close()
@@ -82,47 +83,40 @@ def get_employees():
             "first_name": e.first_name,
             "last_name": e.last_name,
             "status": e.status,
-            "last_login": e.last_login,
+            "last_login": e.last_login
         }
         for e in employees
     ]
 
 
 # ==========================
-# DELETE EMPLOYEE
+# DISABLE EMPLOYEE
 # ==========================
 
-@app.post("/delete-employee")
-def delete_employee(request: DeleteRequest):
+@app.post("/disable-employee")
+def disable_employee(request: DisableRequest):
 
-    if username != "admin" or password != "admin123":
+    if request.company_username != COMPANY_USERNAME or request.company_password != COMPANY_PASSWORD:
         raise HTTPException(status_code=401, detail="Invalid company credentials")
 
     db = SessionLocal()
+
     employee = db.query(Employee).filter(Employee.id == request.employee_id).first()
 
     if not employee:
         db.close()
         raise HTTPException(status_code=404, detail="Employee not found")
 
-    db.delete(employee)
-    db.commit()
+    # change status instead of deleting
+    employee.status = "Disabled"
 
-    remaining = db.query(Employee).all()
+    db.commit()
+    db.refresh(employee)
+
     db.close()
 
     return {
-        "message": "Employee deleted successfully",
-        "remaining_employees": [
-            {
-                "id": e.id,
-                "code": e.code,
-                "email": e.email,
-                "first_name": e.first_name,
-                "last_name": e.last_name,
-                "status": e.status,
-                "last_login": e.last_login,
-            }
-            for e in remaining
-        ],
+        "message": "Employee disabled successfully",
+        "employee_id": employee.id,
+        "status": employee.status
     }
