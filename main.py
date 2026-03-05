@@ -94,9 +94,13 @@ def get_employees():
 # ==========================
 
 @app.post("/disable-employee")
-def disable_employee(request: DisableRequest):
+def disable_employee(request: DeleteRequest):
 
-    if request.company_username != COMPANY_USERNAME or request.company_password != COMPANY_PASSWORD:
+    # check company credentials
+    if (
+        request.company_username != COMPANY_USERNAME
+        or request.company_password != COMPANY_PASSWORD
+    ):
         raise HTTPException(status_code=401, detail="Invalid company credentials")
 
     db = SessionLocal()
@@ -107,16 +111,13 @@ def disable_employee(request: DisableRequest):
         db.close()
         raise HTTPException(status_code=404, detail="Employee not found")
 
-    # change status instead of deleting
+    # DO NOT DELETE — just disable
     employee.status = "Disabled"
 
     db.commit()
-    db.refresh(employee)
-
     db.close()
 
     return {
         "message": "Employee disabled successfully",
-        "employee_id": employee.id,
-        "status": employee.status
+        "employee_id": request.employee_id
     }
