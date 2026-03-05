@@ -93,10 +93,11 @@ def get_employees():
 # DISABLE EMPLOYEE
 # ==========================
 
-@app.post("/disable-employee")
-def disable_employee(request: DeleteRequest):
+from fastapi import Body
 
-    # check company credentials
+@app.post("/disable-employee")
+def disable_employee(request: DeleteRequest = Body(...)):
+
     if (
         request.company_username != COMPANY_USERNAME
         or request.company_password != COMPANY_PASSWORD
@@ -111,7 +112,6 @@ def disable_employee(request: DeleteRequest):
         db.close()
         raise HTTPException(status_code=404, detail="Employee not found")
 
-    # DO NOT DELETE — just disable
     employee.status = "Disabled"
 
     db.commit()
