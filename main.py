@@ -95,10 +95,7 @@ def get_employees():
 @app.post("/delete-employee")
 def delete_employee(request: DeleteRequest):
 
-    if (
-        request.company_username != COMPANY_USERNAME
-        or request.company_password != COMPANY_PASSWORD
-    ):
+    if username != "admin" or password != "admin123":
         raise HTTPException(status_code=401, detail="Invalid company credentials")
 
     db = SessionLocal()
