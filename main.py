@@ -37,14 +37,6 @@ Base.metadata.create_all(bind=engine)
 
 
 # ==========================
-# COMPANY AUTH
-# ==========================
-
-COMPANY_USERNAME = "admin"
-COMPANY_PASSWORD = "company123"
-
-
-# ==========================
 # REQUEST MODEL
 # ==========================
 
